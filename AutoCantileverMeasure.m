@@ -1,5 +1,5 @@
-% Auto Cantilever Measure
-
+%% Auto Cantilever Measure
+% Written by Robert J Scales Feb 2021
 clc
 clear
 close all
@@ -122,6 +122,7 @@ imshow(double(sceneImage));
 montage({uint8(initial_sceneImage), double(sceneImage)});
 %% Step 3 - Feature Detection
 
+% Based on shi-tomasi https://uk.mathworks.com/help/vision/ref/detectmineigenfeatures.html
 boxPoints = detectMinEigenFeatures(double(boxImage)); % detectSURFFeatures
 scenePoints = detectMinEigenFeatures(sceneImage); %detectSURFFeatures
 %% Step 4 - Feature Matching
