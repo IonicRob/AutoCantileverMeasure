@@ -121,60 +121,85 @@ figure;
 imshow(double(sceneImage));
 montage({uint8(initial_sceneImage), double(sceneImage)});
 %% Step 3 - Feature Detection
+close all
+clc
 
-% Based on shi-tomasi https://uk.mathworks.com/help/vision/ref/detectmineigenfeatures.html
-boxPoints = detectMinEigenFeatures(double(boxImage)); % detectSURFFeatures
-scenePoints = detectMinEigenFeatures(sceneImage); %detectSURFFeatures
-%% Step 4 - Feature Matching
-% Based off https://uk.mathworks.com/help/vision/ug/object-detection-in-a-cluttered-scene-using-point-feature-matching.html
+% Parametric Anaylysis stuff
+% for i = 20
+    FilterSize = 3; %(2*i) + 1; % 3
+    MinQuality = 20/100; % 20
+    fprintf('FilterSize = %d\n',FilterSize)
+    fprintf('MinQuality = %d\n',MinQuality*100)
 
-figure;
-imshow(boxImage);
-title('100 Strongest Feature Points from Box Image');
-hold on;
-plot(selectStrongest(boxPoints, 100));
+    % Based on shi-tomasi https://uk.mathworks.com/help/vision/ref/detectmineigenfeatures.html
+    boxPoints = detectMinEigenFeatures(double(boxImage),'FilterSize',3,'MinQuality',0.5/100); % detectSURFFeatures
+    scenePoints = detectMinEigenFeatures(sceneImage,'FilterSize',FilterSize,'MinQuality',MinQuality); %detectSURFFeatures
+    %% Step 4 - Feature Matching
+    % Based off https://uk.mathworks.com/help/vision/ug/object-detection-in-a-cluttered-scene-using-point-feature-matching.html
 
-figure;
-imshow(sceneImage);
-title('300 Strongest Feature Points from Scene Image');
-hold on;
-plot(selectStrongest(scenePoints, 300));
+    figure;
+    imshow(boxImage);
+    title('100 Strongest Feature Points from Box Image');
+    hold on;
+    plot(selectStrongest(boxPoints, 100));
+    pause(3);
 
-[boxFeatures, boxPoints] = extractFeatures(boxImage, boxPoints);
-[sceneFeatures, scenePoints] = extractFeatures(sceneImage, scenePoints);
-boxPairs = matchFeatures(boxFeatures, sceneFeatures);
-matchedBoxPoints = boxPoints(boxPairs(:, 1), :);
-matchedScenePoints = scenePoints(boxPairs(:, 2), :);
-figure;
-showMatchedFeatures(boxImage, sceneImage, matchedBoxPoints, ...
-    matchedScenePoints, 'montage');
-title('Putatively Matched Points (Including Outliers)');
+    figure;
+    imshow(sceneImage);
+    title('Feature Points from Scene Image');
+    hold on;
+    plot(scenePoints);
+    fprintf('Number of scenePoints = %d\n',scenePoints.Count);
+    pause(3);
+    close all
+% end
 
+    [boxFeatures, boxPoints] = extractFeatures(boxImage, boxPoints);
+    [sceneFeatures, scenePoints] = extractFeatures(sceneImage, scenePoints);
+    boxPairs = matchFeatures(boxFeatures, sceneFeatures);
+    matchedBoxPoints = boxPoints(boxPairs(:, 1), :);
+    matchedScenePoints = scenePoints(boxPairs(:, 2), :);
+    figure;
+%     showMatchedFeatures(boxImage, sceneImage, matchedBoxPoints, ...
+%         matchedScenePoints, 'montage');
+    showMatchedFeatures(boxImage, sceneImage, matchedBoxPoints, matchedScenePoints);
+    title('Putatively Matched Points (Including Outliers)');
+    
 
-[tform, inlierIdx] = ...
-    estimateGeometricTransform2D(matchedBoxPoints, matchedScenePoints, 'affine');
-inlierBoxPoints   = matchedBoxPoints(inlierIdx, :);
-inlierScenePoints = matchedScenePoints(inlierIdx, :);
+    try [tform, inlierIdx] = ...
+        estimateGeometricTransform2D(matchedBoxPoints, matchedScenePoints, 'affine');
+    inlierBoxPoints   = matchedBoxPoints(inlierIdx, :);
+    inlierScenePoints = matchedScenePoints(inlierIdx, :);
+    catch
+        warning('Couldnt do this estimateGeometricTransform2D');
+%         close all
+%         continue
+    end
 
-figure;
-showMatchedFeatures(boxImage, sceneImage, inlierBoxPoints, ...
-    inlierScenePoints, 'montage');
-title('Matched Points (Inliers Only)');
+    figure;
+%     showMatchedFeatures(boxImage, sceneImage, inlierBoxPoints, ...
+%         inlierScenePoints, 'montage');
+    showMatchedFeatures(boxImage, sceneImage, inlierBoxPoints, inlierScenePoints);
+    title('Matched Points (Inliers Only)');
 
-boxPolygon = [1, 1;...                           % top-left
-        size(boxImage, 2), 1;...                 % top-right
-        size(boxImage, 2), size(boxImage, 1);... % bottom-right
-        1, size(boxImage, 1);...                 % bottom-left
-        1, 1];                   % top-left again to close the polygon
-newBoxPolygon = transformPointsForward(tform, boxPolygon);
-
-% For some odd reason this doesn't do what it looks like in the original 
-figure;
-imshow(initial_sceneImage);
-hold on;
-line(newBoxPolygon(:, 1), newBoxPolygon(:, 2), 'Color', 'y');
-title('Detected Box');
-
+    boxPolygon = [1, 1;...                           % top-left
+            size(boxImage, 2), 1;...                 % top-right
+            size(boxImage, 2), size(boxImage, 1);... % bottom-right
+            1, size(boxImage, 1);...                 % bottom-left
+            1, 1];                   % top-left again to close the polygon
+    newBoxPolygon = transformPointsForward(tform, boxPolygon);
+    PolygonArea = polyarea(newBoxPolygon(:,1),newBoxPolygon(:,2));
+    fprintf('Area of new box polygon = %d\n\n',PolygonArea)
+    
+    % For some odd reason this doesn't do what it looks like in the original 
+    figure;
+    imshow(initial_sceneImage);
+    hold on;
+    line(newBoxPolygon(:, 1), newBoxPolygon(:, 2), 'Color', 'y');
+    title('Detected Box');
+%     pause(5);
+%     close all
+% end
 %% Old Attempts
 
 % %%
