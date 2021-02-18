@@ -139,19 +139,19 @@ clc
 
     figure;
     imshow(boxImage);
-    title('100 Strongest Feature Points from Box Image');
+    title('Detected Feature Points from Ideal Image');
     hold on;
     plot(selectStrongest(boxPoints, 100));
     pause(3);
 
     figure;
     imshow(sceneImage);
-    title('Feature Points from Scene Image');
+    title('Detected Feature Points from OM Image');
     hold on;
     plot(scenePoints);
     fprintf('Number of scenePoints = %d\n',scenePoints.Count);
-    pause(3);
-    close all
+%     pause(3);
+%     close all
 % end
 
     [boxFeatures, boxPoints] = extractFeatures(boxImage, boxPoints);
@@ -162,7 +162,7 @@ clc
     figure;
 %     showMatchedFeatures(boxImage, sceneImage, matchedBoxPoints, ...
 %         matchedScenePoints, 'montage');
-    showMatchedFeatures(boxImage, sceneImage, matchedBoxPoints, matchedScenePoints);
+    showMatchedFeatures(boxImage, sceneImage, matchedBoxPoints, matchedScenePoints, 'montage');
     title('Putatively Matched Points (Including Outliers)');
     
 
@@ -179,7 +179,7 @@ clc
     figure;
 %     showMatchedFeatures(boxImage, sceneImage, inlierBoxPoints, ...
 %         inlierScenePoints, 'montage');
-    showMatchedFeatures(boxImage, sceneImage, inlierBoxPoints, inlierScenePoints);
+    showMatchedFeatures(boxImage, sceneImage, inlierBoxPoints, inlierScenePoints, 'montage');
     title('Matched Points (Inliers Only)');
 
     boxPolygon = [1, 1;...                           % top-left
@@ -198,7 +198,7 @@ clc
     line(newBoxPolygon(:, 1), newBoxPolygon(:, 2), 'Color', 'y');
     title('Detected Box');
 %     pause(5);
-%     close all
+    close all
 % end
 %% Old Attempts
 
