@@ -12,20 +12,10 @@ if isempty(cd_StartFolderLocation)
     cd_StartFolderLocation = cd_code;
 end
 
-cd(cd_StartFolderLocation);
-[cant_files,cant_path] = uigetfile('*.png','MultiSelect','off');
-cant_filenames = string(cant_files);
-cant_fullfiles = string(fullfile(cant_path,cant_files));
-cd(cd_code);
-
-if isa(cant_files,'char') % If one file is selected it will be loaded in as a char and not a cell.
-    cant_files = cellstr(cant_files);
-end
-
 
 cd(cd_StartFolderLocation);
 filter = '*.tif';
-[files,path] = uigetfile(filter,'MultiSelect','on');
+[files,path] = uigetfile(filter,'MultiSelect','off');
 filenames = string(files);
 fullfiles = string(fullfile(path,files));
 cd(cd_code);
@@ -34,13 +24,16 @@ if isa(files,'char') % If one file is selected it will be loaded in as a char an
     files = cellstr(files);
 end
 
+OutPutCell = f_ScaleFinder(fullfiles(1),1);
+
+Scale_Value = OutPutCell{1,1};
+Scale_Unit = OutPutCell{1,2};
+
 %% Step 1 - Select Region Of Interest
 close all
 clc
-I = cant_fullfiles{1};
 J = fullfiles{1};
 
-boxImage = (imread(I));
 sceneImage = rgb2gray(imread(J));
 initial_sceneImage = sceneImage;
 
@@ -116,13 +109,78 @@ plot(mask_boundary(:,2),mask_boundary(:,1),'g','LineWidth',3);
 % end
 % close all
 
+
+
+%%
+close all
 sceneImage = BW_filled;
 figure;
 imshow(double(sceneImage));
-montage({uint8(initial_sceneImage), double(sceneImage)});
+% montage({uint8(initial_sceneImage), double(sceneImage)});
+roi_line = drawline;
 
 %%
+roi_line_pos = roi_line.Position;
+roi_line_x_diff = (roi_line_pos(2,1)-roi_line_pos(1,1));
+roi_line_y_diff = (roi_line_pos(1,2)-roi_line_pos(2,2));
+roi_line_width = sqrt((roi_line_x_diff)^2);
+roi_line_height = sqrt((roi_line_y_diff)^2);
+roi_line_length = sqrt((roi_line_width)^2 + (roi_line_height)^2);
+roi_line_mp = nan(1,2);
+roi_line_mp(:,:) = [mean(roi_line_pos(:,1)), mean(roi_line_pos(:,2))];
+hold on
+plot (roi_line_mp,'rx');
 
+% [~, roi_line_idx_b] = min(roi_line_pos(:,2));
+% [~, roi_line_idx_t] = max(roi_line_pos(:,2));
+roi_line_raw_angle = atand(roi_line_height/roi_line_width);
+
+if roi_line_x_diff > 0 && roi_line_y_diff > 0
+    roi_line_angle = roi_line_raw_angle;
+elseif roi_line_x_diff < 0 && roi_line_y_diff > 0
+    roi_line_angle = 180-abs(roi_line_raw_angle);
+elseif roi_line_x_diff < 0 && roi_line_y_diff < 0
+    roi_line_angle = 180+abs(roi_line_raw_angle);
+elseif roi_line_x_diff > 0 && roi_line_y_diff < 0
+    roi_line_angle = 360-abs(roi_line_raw_angle);
+end
+
+vp = [-roi_line_y_diff, roi_line_x_diff]/2;
+% vp = vp/norm(vp);
+% A = dot([roi_line_x_diff,roi_line_y_diff], vp);
+
+new_line_pos_1 = [roi_line_mp;roi_line_mp+vp];
+new_line_pos_2 = [roi_line_mp;roi_line_mp-vp];
+
+roi_line_2 = drawline('Position',new_line_pos_1);
+roi_line_3 = drawline('Position',new_line_pos_2);
+
+roi_line_2_mode = improfile(sceneImage,new_line_pos_1(:,1),new_line_pos_1(:,2));
+roi_line_3_mode = improfile(sceneImage,new_line_pos_2(:,1),new_line_pos_2(:,2));
+
+if mode(roi_line_2_mode) == 1
+    roi_normal_line_pos = new_line_pos_1;
+    roi_normal_line = roi_line_2;
+    roi_normal_line_pos = [roi_line_mp;roi_line_mp+(vp*2)];
+elseif mode(roi_line_3_mode) == 1
+    roi_normal_line_pos = new_line_pos_2;
+    roi_normal_line = roi_line_3;
+    roi_normal_line_pos = [roi_line_mp;(roi_line_mp-(vp*5))];
+else
+    warning('Did not work');
+    return
+end
+
+current_lines = findobj(gca,'Type','images.roi.line');
+delete(current_lines);
+try
+    roi_normal_line = drawline('Position',roi_normal_line_pos);
+catch
+    warning('Could not draw line');
+end
+roi_normal_line_profile = improfile(sceneImage,roi_normal_line_pos(:,1),roi_normal_line_pos(:,2));
+
+last_one = find(roi_normal_line_profile,1,'last')
 % BW2 = bwmorph(sceneImage,'remove');
 % figure
 % imshow(BW2)
